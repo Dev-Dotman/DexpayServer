@@ -2,22 +2,51 @@ const { Sequelize, DataTypes } = require("sequelize");
 require("dotenv").config();
 
 // Initialize Sequelize connection (adjust with your own DB details)
+// const sequelize = new Sequelize(
+//   process.env.DB_NAME2,
+//   process.env.USER,
+//   process.env.PASSWORD,
+//   {
+//     host: process.env.DB_HOST2,
+//     dialect: "postgres",
+//     // protocol: "postgres",
+//     dialectOptions: {
+//       ssl: {
+//         require: true,
+//         rejectUnauthorized: false, // This line is important for connecting to Supabase
+//       },
+//     },
+//     port: 6543, // Default PostgreSQL port
+//     logging: false,
+//   }
+// );
+
+// const sequelize = new Sequelize(process.env.AI_DB, {
+//   dialect: 'postgres',
+//   ssl: true,
+//   dialectOptions: {
+//       ssl: {
+//           require: true, // Enable SSL
+//           rejectUnauthorized: false, // Allow self-signed certificates
+//       },
+//   },
+//   logging: false, // Disable query logging
+// });
+
 const sequelize = new Sequelize(
-  process.env.DB_NAME2,
-  process.env.USER,
-  process.env.PASSWORD,
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
   {
-    host: process.env.DB_HOST2,
-    dialect: "postgres",
-    // protocol: "postgres",
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    dialect: process.env.DB_DIALECT,
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false, // This line is important for connecting to Supabase
+        rejectUnauthorized: false,
       },
     },
-    port: 6543, // Default PostgreSQL port
-    logging: false,
   }
 );
 
@@ -280,13 +309,13 @@ const Transaction = sequelize.define(
     },
   },
   {
-    tableName: "transactions",
+    tableName: "transaction",
     timestamps: false,
   }
 );
 
 const Refund = sequelize.define(
-  "Transaction",
+  "Refund",
   {
     id: {
       type: DataTypes.INTEGER,

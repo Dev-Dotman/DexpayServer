@@ -58,7 +58,7 @@ const jwt_key = process.env.JWT_KEY;
 const TOKEN_EXPIRY = process.env.TOKEN_EXPIRY;
 
 const app = express();
-const port = 3004;
+const port = process.env.PORT || 3000;;
 app.use(
   cors({
     // origin: function (origin, callback) {
@@ -214,7 +214,7 @@ async function sendEmail(to, text) {
   const mailOptions = {
     from: "theoutsourcestudio01@gmail.com",
     to,
-    subject: "WhatFlow Message",
+    subject: "Dexpay Message",
     html: text,
   };
 
@@ -225,7 +225,7 @@ async function sendReceipt(to, text, buffer) {
   const mailOptions = {
     from: "theoutsourcestudio01@gmail.com",
     to,
-    subject: "WhatFlow Message",
+    subject: "Dexpay Message",
     html: text,
     attachments: [
       {
@@ -396,7 +396,7 @@ app.post("/signup", upload, async (req, res) => {
     });
     // Create a welcome notification
     const now = new Date();
-    const message = `Hello ${nickname}, Welcome to WhatFlow. You created an account on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}.`;
+    const message = `Hello ${nickname}, Welcome to Dexpay. You created an account on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}.`;
     const title = `Account Creation`;
 
     await Notification.create({
@@ -533,7 +533,12 @@ app.post("/loginSU", async (req, res) => {
   try {
     // Find the user by email
     const mail = email.toLowerCase();
-    const user = await User.findOne({ where: { email } });
+    const user = await simpleUser.findOne({ where: { email } });
+
+
+    const users = await simpleUser.findAll(); // Fetch all records from the table
+    console.log('Table Data:', users.map(user => user.toJSON())); // Format and display results
+    console.log(user)
 
     if (!user) {
       return res.status(404).json({
@@ -753,7 +758,7 @@ app.post("/createPayment", async (req, res) => {
         message: initializedMerchant.message,
       });
     }
-
+console.log(initializedMerchant)
     // Create the new payment link with the generated key
     const newPaymentLink = await PaymentLinks.create({
       amount_fiat,
@@ -766,7 +771,7 @@ app.post("/createPayment", async (req, res) => {
       merchant_email,
       status,
       key, // Store the generated key in the 'key' field
-      initializedWalletAddress: initializedMerchant.merchantAccount,
+      initializedWalletAddress: wallet_address,
     });
 
     return res.status(201).json({
@@ -1026,7 +1031,7 @@ const walletKeypair = Keypair.fromSecretKey(
 );
 
 // Connect to Solana devnet
-const connection = new Connection(clusterApiUrl("testnet"), "confirmed");
+const connection = new Connection(clusterApiUrl(process.env.CLUSTER), "confirmed");
 const provider = new anchor.AnchorProvider(
   connection,
   new anchor.Wallet(walletKeypair),
