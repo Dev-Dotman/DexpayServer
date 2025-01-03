@@ -695,7 +695,7 @@ app.post("/verify-bank-account", async (req, res) => {
   const { bankCode, accountNumber } = req.body;
   const accountInfo = await verifyBankAccount(bankCode, accountNumber);
   res.json(accountInfo);
-  console.log(accountInfo);
+  //console.log(accountInfo);
 });
 
 app.post("/storePaymentDetails", async (req, res) => {
@@ -974,7 +974,7 @@ app.post("/send-otp", async (req, res) => {
 // Endpoint to update email verification status
 app.put("/verify/email/:email", async (req, res) => {
   const email = req.params.email;
-  console.log(email);
+  //console.log(email);
   try {
     const user = await User.findOne({
       where: {
@@ -1058,7 +1058,7 @@ app.put("/verify/phone/:email", async (req, res) => {
 
 app.post("/change-password", async (req, res) => {
   const { email, oldPassword, newPassword } = req.body;
-  console.log(oldPassword);
+  //console.log(oldPassword);
 
   if (!email || !oldPassword || !newPassword) {
     return res
