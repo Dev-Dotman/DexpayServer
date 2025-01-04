@@ -1649,7 +1649,7 @@ app.post("/complete-escrow", async (req, res) => {
         .json({ error: "Missing required fields", success: false });
     }
 
-    console.log("log234", req.session.tx);
+    console.log("log234", signer);
 
     if (!signer._keypair) {
       return res
