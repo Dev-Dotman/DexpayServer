@@ -13,8 +13,8 @@ const path = require("path");
 const router = express.Router();
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
-const pgSession = require('connect-pg-simple')(session);
-const { Pool } = require('pg');
+const pgSession = require("connect-pg-simple")(session);
+const { Pool } = require("pg");
 require("dotenv").config();
 const { Op } = require("sequelize");
 const bs58 = require("bs58");
@@ -53,7 +53,7 @@ const {
   PaymentLinks,
   simpleUser,
   Refund,
-  sessionStore
+  sessionStore,
 } = require("./Models");
 
 const jwt_key = process.env.JWT_KEY;
@@ -61,7 +61,7 @@ const jwt_key = process.env.JWT_KEY;
 const TOKEN_EXPIRY = process.env.TOKEN_EXPIRY;
 
 const app = express();
-const port = process.env.PORT || 3000;;
+const port = process.env.PORT || 3000;
 app.use(
   cors({
     // origin: function (origin, callback) {
@@ -83,13 +83,11 @@ app.use(
   })
 );
 
-
-
 // Configure session middleware
 app.use(
   session({
     store: sessionStore,
-    secret: process.env.JWT_KEY || 'yourSecretKey',
+    secret: process.env.JWT_KEY || "yourSecretKey",
     resave: false, // Avoid saving unchanged sessions
     saveUninitialized: false, // Don't save uninitialized sessions
     cookie: {
@@ -100,7 +98,7 @@ app.use(
   })
 );
 
-sessionStore.sync({alter: true});
+sessionStore.sync({ alter: true });
 
 // app.use(
 //   session({
@@ -115,7 +113,34 @@ sessionStore.sync({alter: true});
 //   })
 // );
 
+// Transaction middleware
+const transactionMiddleware = (req, res, next) => {
+  if (!req.session.tx) {
+    req.session.tx = null;
+  }
 
+  req.saveTransactionKeypair = (keypair) => {
+    req.session.tx = {
+      publicKey: Array.from(keypair._keypair.publicKey),
+      secretKey: Array.from(keypair._keypair.secretKey),
+    };
+  };
+
+  req.getTransactionKeypair = () => {
+    if (req.session.tx) {
+      const { publicKey, secretKey } = req.session.tx;
+      return new Keypair({
+        publicKey: Uint8Array.from(publicKey),
+        secretKey: Uint8Array.from(secretKey),
+      });
+    }
+    return null;
+  };
+
+  next();
+};
+
+app.use(transactionMiddleware);
 
 app.use(express.json());
 
@@ -370,7 +395,6 @@ app.post("/signup", upload, async (req, res) => {
   const { firstName, lastName, email, nickname, phoneNumber, password } =
     req.body;
 
-
   try {
     // Check if user already exists by email
     const existingUser = await User.findOne({ where: { email } });
@@ -482,7 +506,6 @@ app.post("/register", async (req, res) => {
       success: true,
       user: newUser,
     });
-
   } catch (error) {
     console.error("Error registering user:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -559,10 +582,12 @@ app.post("/loginSU", async (req, res) => {
     const mail = email.toLowerCase();
     const user = await simpleUser.findOne({ where: { email } });
 
-
     const users = await simpleUser.findAll(); // Fetch all records from the table
-    console.log('Table Data:', users.map(user => user.toJSON())); // Format and display results
-    console.log(user)
+    console.log(
+      "Table Data:",
+      users.map((user) => user.toJSON())
+    ); // Format and display results
+    console.log(user);
 
     if (!user) {
       return res.status(404).json({
@@ -782,7 +807,7 @@ app.post("/createPayment", async (req, res) => {
         message: initializedMerchant.message,
       });
     }
-console.log(initializedMerchant)
+    console.log(initializedMerchant);
     // Create the new payment link with the generated key
     const newPaymentLink = await PaymentLinks.create({
       amount_fiat,
@@ -1055,7 +1080,10 @@ const walletKeypair = Keypair.fromSecretKey(
 );
 
 // Connect to Solana devnet
-const connection = new Connection(clusterApiUrl(process.env.CLUSTER), "confirmed");
+const connection = new Connection(
+  clusterApiUrl(process.env.CLUSTER),
+  "confirmed"
+);
 const provider = new anchor.AnchorProvider(
   connection,
   new anchor.Wallet(walletKeypair),
@@ -1228,13 +1256,15 @@ app.post("/api/create-escrow", async (req, res) => {
     //   //console.log("error :", error);
     // }
 
-    req.session.user = payerId
+    req.session.user = payerId;
     req.session.tx = escrowAccount;
-    console.log(req.session.tx)
+    console.log(req.session.tx);
+
+    req.saveTransactionKeypair(escrowAccount);
 
     req.session.save((err) => {
       if (err) {
-        console.error('Error saving session:', err);
+        console.error("Error saving session:", err);
       }
     });
 
@@ -1608,7 +1638,7 @@ app.post("/complete-escrow", async (req, res) => {
   } = req.body;
 
   try {
-    const signer = req.session.tx;
+    const signer = req.getTransactionKeypair();
 
     //console.log(signer);
 
@@ -1619,10 +1649,9 @@ app.post("/complete-escrow", async (req, res) => {
         .json({ error: "Missing required fields", success: false });
     }
 
+    console.log("log234", req.session.tx);
 
-    console.log("log234", req.session.tx)
-
-    if (!req.session.tx) {
+    if (!signer._keypair) {
       return res
         .status(400)
         .json({ error: "No valid transaction session", success: false });
@@ -1891,13 +1920,14 @@ app.post("/refund-escrow", async (req, res) => {
       .json({ error: "Missing required fields", success: false });
   }
 
-  if (!req.session.tx) {
+  const signer = req.getTransactionKeypair();
+
+  if (!signer._keypair) {
     return res
       .status(400)
       .json({ error: "No valid transaction session", success: false });
   }
 
-  const signer = req.session.tx;
 
   try {
     // Convert signer secretKey to Keypair
@@ -2148,7 +2178,7 @@ app.post("/getPubkey", async (req, res) => {
     console.error("No signer");
     return res.status(401).json({ success: false, message: "no signer found" });
   }
-//console.log(signer.publicKey)
+  //console.log(signer.publicKey)
   try {
     const secretKey = new Uint8Array(Object.values(signer.secretKey));
     const keypair = secretKey;
@@ -2218,9 +2248,8 @@ app.post("/getPubkey", async (req, res) => {
       message: "decryption successful",
       walletDetails: details,
       transaction: base64Transaction,
-      depk: signer.publicKey
+      depk: signer.publicKey,
     });
-    
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "disable failed" });
