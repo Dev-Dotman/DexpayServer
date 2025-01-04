@@ -1872,12 +1872,7 @@ app.post("/complete-escrow", async (req, res) => {
           message: `A payment of ${amount_merchant} SOL has been made to module ${link}.`,
         });
 
-        req.session.destroy((err) => {
-          if (err) {
-            return console.error("Failed to destroy session", err);
-          }
-          //console.log("Session destroyed");
-        });
+        req.deleteTransaction(tx_code)
 
         res.status(200).json({
           message: "Escrow completed successfully",
@@ -1950,7 +1945,7 @@ const refundSOL = async (from, signer, to, amount, feePayer) => {
 };
 
 app.post("/refund-escrow", async (req, res) => {
-  const { key, escrowAddress, refundWalletAddress, refundAmount, payerEmail } =
+  const { key, escrowAddress, refundWalletAddress, refundAmount, payerEmail, tx_code } =
     req.body;
 
   // Check for required fields
@@ -1960,7 +1955,7 @@ app.post("/refund-escrow", async (req, res) => {
       .json({ error: "Missing required fields", success: false });
   }
 
-  const signer = req.getTransactionKeypair();
+  const signer = req.getTransactionKeypair(tx_code);
 
   if (!signer) {
     return res
@@ -2048,6 +2043,8 @@ app.post("/refund-escrow", async (req, res) => {
           success: true,
           details,
         });
+
+        req.deleteTransaction(tx_code)
       } else console.error("no transaction hash");
     } catch (error) {
       console.error("Error completing Refund:", error);
