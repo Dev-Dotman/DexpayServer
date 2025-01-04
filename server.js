@@ -85,19 +85,18 @@ app.use(
 
 
 // Configure PostgreSQL connection pool
-const pgPool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST, // e.g., localhost or Render's DB host
-  database: process.env.DB_NAME,
-  password: process.env.PASSWORD,
-  port: process.env.DB_PORT, // Default PostgreSQL port
+const pool = new Pool({
+  connectionString: process.env.AI_DB ,
+  ssl: {
+    rejectUnauthorized: false, // Use with caution, validate certificates in production
+  },
 });
 
 // Configure session middleware
 app.use(
   session({
     store: new pgSession({
-      pool: pgPool, // Use the connection pool
+      pool: pool, // Use the connection pool
       createTableIfMissing: true, // Automatically create the session table if it doesn't exist
       tableName: 'user_sessions', // Optional: Customize the table name
     }),
@@ -112,7 +111,18 @@ app.use(
   })
 );
 
-// 
+// app.use(
+//   session({
+//     secret: process.env.JWT_KEY, // You should use a strong secret key
+//     resave: false, // Do not resave session if not modified
+//     saveUninitialized: true, // Save a new session even if it's not initialized
+//     cookie: {
+//       maxAge: 30 * 60 * 1000, // Cookie will expire after 30 minutes
+//       secure: false, // Set to true if using HTTPS
+//       sameSite: "lax",
+//     },
+//   })
+// );
 
 
 
