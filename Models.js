@@ -323,6 +323,29 @@ const Transaction = sequelize.define(
   }
 );
 
+const TxSession = sequelize.define('TxSession', {
+  tx_code: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  payer_id: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  publicKey: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  secretKey: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+}, {
+  tableName: 'txSession',
+  timestamps: true,
+});
+
 const Refund = sequelize.define(
   "Refund",
   {
@@ -499,5 +522,6 @@ module.exports = {
   PaymentLinks,
   simpleUser,
   Refund,
-  txSessionStore
+  txSessionStore,
+  TxSession
 };

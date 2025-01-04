@@ -53,7 +53,8 @@ const {
   PaymentLinks,
   simpleUser,
   Refund,
-  txSessionStore
+  txSessionStore,
+  TxSession
 } = require("./Models");
 
 const jwt_key = process.env.JWT_KEY;
@@ -115,48 +116,57 @@ txSessionStore.sync({ alter: true });
 
 // Transaction middleware
 const transactionMiddleware = (req, res, next) => {
-  // Save the Keypair in the session
-  req.saveTransactionKeypair = (keypair) => {
-    req.session.tx = {
-      publicKey: Array.from(keypair._keypair.publicKey),
-      secretKey: Array.from(keypair._keypair.secretKey),
-    };
-    req.session.save((err) => {
-      if (err) {
-        console.error('Failed to save session:', err);
-      } else {
-        console.log('Keypair saved in session.');
-      }
-    });
-  };
-
-  // Retrieve the Keypair by fetching the session from the database
-  req.getTransactionKeypair = async () => {
-    const sessionId = req.sessionID; // Current session ID
+  // Save the transaction in the database
+  req.saveTransactionKeypair = async (keypair, tx_code, payer_id) => {
     try {
-      // Query the session table to fetch session data
-      const sessionData = await txSessionStore.sessionModel.findOne({
-        where: { sid: sessionId },
+      const publicKey = Buffer.from(keypair._keypair.publicKey).toString('base64');
+      const secretKey = Buffer.from(keypair._keypair.secretKey).toString('base64');
+
+      await TxSession.create({
+        tx_code,
+        payer_id,
+        publicKey,
+        secretKey,
       });
 
-      console.log("session data", sessionData)
+      console.log('Transaction saved to database.');
+    } catch (error) {
+      console.error('Error saving transaction to database:', error);
+    }
+  };
 
-      if (sessionData && sessionData.data) {
-        const sessionParsed = JSON.parse(sessionData.data);
-        if (sessionParsed.tx) {
-          const { publicKey, secretKey } = sessionParsed.tx;
-          return new Keypair({
-            publicKey: Uint8Array.from(publicKey),
-            secretKey: Uint8Array.from(secretKey),
-          });
-        }
+  // Retrieve the transaction by tx_code
+  req.getTransactionKeypair = async (tx_code) => {
+    try {
+      const transaction = await TxSession.findOne({ where: { tx_code } });
+
+      if (transaction) {
+        return new Keypair({
+          publicKey: Uint8Array.from(Buffer.from(transaction.publicKey, 'base64')),
+          secretKey: Uint8Array.from(Buffer.from(transaction.secretKey, 'base64')),
+        });
       }
 
-      console.log('No Keypair found in session.');
+      console.log('Transaction not found for tx_code:', tx_code);
       return null;
     } catch (error) {
-      console.error('Error fetching session from database:', error);
+      console.error('Error fetching transaction from database:', error);
       return null;
+    }
+  };
+
+  // Delete the transaction by tx_code
+  req.deleteTransaction = async (tx_code) => {
+    try {
+      const result = await TxSession.destroy({ where: { tx_code } });
+
+      if (result) {
+        console.log('Transaction deleted for tx_code:', tx_code);
+      } else {
+        console.log('No transaction found to delete for tx_code:', tx_code);
+      }
+    } catch (error) {
+      console.error('Error deleting transaction from database:', error);
     }
   };
 
@@ -1281,8 +1291,14 @@ app.post("/api/create-escrow", async (req, res) => {
 
     req.session.user = payerId;
     req.session.tx = escrowAccount;
+    const hashInput = `${payerId}-${escrowAccount}-${new Date().getTime()}`;
+    const tx_code = crypto
+      .createHash("sha256")
+      .update(hashInput)
+      .digest("hex")
+      .substring(0, 25);
 
-    req.saveTransactionKeypair(escrowAccount);
+    req.saveTransactionKeypair(escrowAccount, tx_code, payerId);
 
     req.session.save((err) => {
       if (err) {
@@ -1308,6 +1324,7 @@ app.post("/api/create-escrow", async (req, res) => {
       escrowAddress: escrowAccount.publicKey.toString(),
       sss: req.sessionID,
       amount,
+      tx_code,
       message: "Escrow account created successfully.",
       platform: sol_platform_wallet,
       merchant: initializedWalletAddress,
@@ -1652,6 +1669,7 @@ app.post("/complete-escrow", async (req, res) => {
     platform,
     currency,
     key,
+    tx_code,
     payerEmail,
     merchant,
     newPub,
@@ -1660,7 +1678,7 @@ app.post("/complete-escrow", async (req, res) => {
   } = req.body;
 
   try {
-    const signer = await req.getTransactionKeypair();
+    const signer = await req.getTransactionKeypair(tx_code);
 
     console.log(signer);
 
