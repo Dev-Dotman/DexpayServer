@@ -1658,7 +1658,7 @@ app.post("/complete-escrow", async (req, res) => {
   } = req.body;
 
   try {
-    const signer = req.getTransactionKeypair();
+    const signer = await req.getTransactionKeypair();
 
     console.log(signer);
 
