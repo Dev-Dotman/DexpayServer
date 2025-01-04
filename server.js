@@ -13,6 +13,8 @@ const path = require("path");
 const router = express.Router();
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
 require("dotenv").config();
 const { Op } = require("sequelize");
 const bs58 = require("bs58");
@@ -80,18 +82,39 @@ app.use(
   })
 );
 
+
+
+// Configure PostgreSQL connection pool
+const pgPool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST, // e.g., localhost or Render's DB host
+  database: process.env.DB_NAME,
+  password: process.env.PASSWORD,
+  port: process.env.DB_PORT, // Default PostgreSQL port
+});
+
+// Configure session middleware
 app.use(
   session({
-    secret: process.env.JWT_KEY, // You should use a strong secret key
-    resave: false, // Do not resave session if not modified
-    saveUninitialized: true, // Save a new session even if it's not initialized
+    store: new pgSession({
+      pool: pgPool, // Use the connection pool
+      createTableIfMissing: true, // Automatically create the session table if it doesn't exist
+      tableName: 'user_sessions', // Optional: Customize the table name
+    }),
+    secret: process.env.JWT_KEY || 'yourSecretKey',
+    resave: false, // Avoid saving unchanged sessions
+    saveUninitialized: false, // Don't save uninitialized sessions
     cookie: {
-      maxAge: 30 * 60 * 1000, // Cookie will expire after 30 minutes
-      secure: false, // Set to true if using HTTPS
-      sameSite: "lax",
+      maxAge: 30 * 60 * 1000, // 30 days
+      secure: true, // Set to true if you're using HTTPS
+      httpOnly: true, // Prevents client-side script access
     },
   })
 );
+
+// 
+
+
 
 app.use(express.json());
 
