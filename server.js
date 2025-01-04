@@ -115,22 +115,34 @@ sessionStore.sync({ alter: true });
 
 // Transaction middleware
 const transactionMiddleware = (req, res, next) => {
+  // Ensure session.tx exists in req.session
   if (!req.session.tx) {
     req.session.tx = null;
   }
-  let key = null
 
-  // Save Keypair in session as Base64 encoded strings
+  // Save Keypair object in the session
   req.saveTransactionKeypair = (keypair) => {
-    console.log(keypair)
-    req.session.tx = keypair
+    // Serialize the Keypair to a JSON-safe structure
+    req.session.tx = {
+      publicKey: Array.from(keypair._keypair.publicKey),
+      secretKey: Array.from(keypair._keypair.secretKey),
+    };
+    console.log('Keypair saved to session:', req.session.tx);
   };
 
-  // Retrieve the Keypair from session and convert back to Uint8Array
+  // Retrieve Keypair from session
   req.getTransactionKeypair = () => {
-    const keypair = req.session.tx
-    console.log('key..', keypair)
-    return keypair;
+    if (req.session.tx) {
+      const { publicKey, secretKey } = req.session.tx;
+      // Deserialize the JSON-safe structure back into a Keypair object
+      const keypair = new Keypair({
+        publicKey: Uint8Array.from(publicKey),
+        secretKey: Uint8Array.from(secretKey),
+      });
+      console.log('Keypair retrieved from session:', keypair);
+      return keypair;
+    }
+    return null;
   };
 
   next();
