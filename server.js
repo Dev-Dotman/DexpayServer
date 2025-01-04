@@ -53,6 +53,7 @@ const {
   PaymentLinks,
   simpleUser,
   Refund,
+  sessionStore
 } = require("./Models");
 
 const jwt_key = process.env.JWT_KEY;
@@ -84,22 +85,10 @@ app.use(
 
 
 
-// Configure PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.AI_DB ,
-  ssl: {
-    rejectUnauthorized: false, // Use with caution, validate certificates in production
-  },
-});
-
 // Configure session middleware
 app.use(
   session({
-    store: new pgSession({
-      pool: pool, // Use the connection pool
-      createTableIfMissing: true, // Automatically create the session table if it doesn't exist
-      tableName: 'user_sessions', // Optional: Customize the table name
-    }),
+    store: sessionStore,
     secret: process.env.JWT_KEY || 'yourSecretKey',
     resave: false, // Avoid saving unchanged sessions
     saveUninitialized: false, // Don't save uninitialized sessions
@@ -110,6 +99,8 @@ app.use(
     },
   })
 );
+
+sessionStore.sync({alter: true});
 
 // app.use(
 //   session({

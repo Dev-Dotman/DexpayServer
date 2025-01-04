@@ -1,5 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 require("dotenv").config();
+const session = require('express-session');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
 
 // Initialize Sequelize connection (adjust with your own DB details)
 // const sequelize = new Sequelize(
@@ -49,6 +51,14 @@ const sequelize = new Sequelize(
     },
   }
 );
+
+// Initialize the session store
+const sessionStore = new SequelizeStore({
+  db: sequelize,
+  tableName: 'user_sessions', // Optional: Customize the table name
+  checkExpirationInterval: 15 * 60 * 1000, // Cleanup expired sessions every 15 minutes
+  expiration: 30 * 24 * 60 * 60 * 1000, // 30 days
+});
 
 // Define User (simple) Model
 const simpleUser = sequelize.define("simpleUser", {
@@ -489,5 +499,6 @@ module.exports = {
   Notification,
   PaymentLinks,
   simpleUser,
-  Refund
+  Refund,
+  sessionStore
 };
