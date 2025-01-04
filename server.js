@@ -54,6 +54,7 @@ const {
   simpleUser,
   Refund,
   sessionStore,
+  txSessionStore
 } = require("./Models");
 
 const jwt_key = process.env.JWT_KEY;
@@ -99,6 +100,7 @@ app.use(
 );
 
 sessionStore.sync({ alter: true });
+txSessionStore.sync({ alter: true });
 
 // app.use(
 //   session({
@@ -115,32 +117,29 @@ sessionStore.sync({ alter: true });
 
 // Transaction middleware
 const transactionMiddleware = (req, res, next) => {
-  // Ensure session.tx exists in req.session
-  if (!req.session.tx) {
-    req.session.tx = null;
-  }
-
-  // Save Keypair object in the session
+  // Save Keypair in session
   req.saveTransactionKeypair = (keypair) => {
-    // Serialize the Keypair to a JSON-safe structure
     req.session.tx = {
       publicKey: Array.from(keypair._keypair.publicKey),
       secretKey: Array.from(keypair._keypair.secretKey),
     };
-    console.log('Keypair saved to session:', req.session.tx);
+    req.session.save((err) => {
+      if (err) {
+        console.error('Failed to save session:', err);
+      } else {
+        console.log('Session saved successfully.');
+      }
+    });
   };
 
   // Retrieve Keypair from session
   req.getTransactionKeypair = () => {
     if (req.session.tx) {
       const { publicKey, secretKey } = req.session.tx;
-      // Deserialize the JSON-safe structure back into a Keypair object
-      const keypair = new Keypair({
+      return new Keypair({
         publicKey: Uint8Array.from(publicKey),
         secretKey: Uint8Array.from(secretKey),
       });
-      console.log('Keypair retrieved from session:', keypair);
-      return keypair;
     }
     return null;
   };

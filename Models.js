@@ -60,6 +60,13 @@ const sessionStore = new SequelizeStore({
   expiration: 30 * 24 * 60 * 60 * 1000, // 30 days
 });
 
+const txSessionStore = new SequelizeStore({
+  db: sequelize,
+  tableName: 'tx_sessions', // Optional: Customize the table name
+  checkExpirationInterval: 15 * 60 * 1000, // Cleanup expired sessions every 15 minutes
+  expiration: 30 * 24 * 60 * 60 * 1000, // 30 days
+});
+
 // Define User (simple) Model
 const simpleUser = sequelize.define("simpleUser", {
   firstName: {
@@ -500,5 +507,6 @@ module.exports = {
   PaymentLinks,
   simpleUser,
   Refund,
-  sessionStore
+  sessionStore,
+  txSessionStore
 };
