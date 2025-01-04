@@ -53,7 +53,6 @@ const {
   PaymentLinks,
   simpleUser,
   Refund,
-  sessionStore,
   txSessionStore
 } = require("./Models");
 
@@ -87,7 +86,7 @@ app.use(
 // Configure session middleware
 app.use(
   session({
-    store: sessionStore,
+    store: txSessionStore,
     secret: process.env.JWT_KEY || "yourSecretKey",
     resave: false, // Avoid saving unchanged sessions
     saveUninitialized: false, // Don't save uninitialized sessions
@@ -99,7 +98,6 @@ app.use(
   })
 );
 
-sessionStore.sync({ alter: true });
 txSessionStore.sync({ alter: true });
 
 // app.use(
@@ -117,7 +115,7 @@ txSessionStore.sync({ alter: true });
 
 // Transaction middleware
 const transactionMiddleware = (req, res, next) => {
-  // Save Keypair in session
+  // Save the Keypair in the session
   req.saveTransactionKeypair = (keypair) => {
     req.session.tx = {
       publicKey: Array.from(keypair._keypair.publicKey),
@@ -127,21 +125,37 @@ const transactionMiddleware = (req, res, next) => {
       if (err) {
         console.error('Failed to save session:', err);
       } else {
-        console.log('Session saved successfully.');
+        console.log('Keypair saved in session.');
       }
     });
   };
 
-  // Retrieve Keypair from session
-  req.getTransactionKeypair = () => {
-    if (req.session.tx) {
-      const { publicKey, secretKey } = req.session.tx;
-      return new Keypair({
-        publicKey: Uint8Array.from(publicKey),
-        secretKey: Uint8Array.from(secretKey),
+  // Retrieve the Keypair by fetching the session from the database
+  req.getTransactionKeypair = async () => {
+    const sessionId = req.sessionID; // Current session ID
+    try {
+      // Query the session table to fetch session data
+      const sessionData = await txSessionStore.sessionModel.findOne({
+        where: { sid: sessionId },
       });
+
+      if (sessionData && sessionData.data) {
+        const sessionParsed = JSON.parse(sessionData.data);
+        if (sessionParsed.tx) {
+          const { publicKey, secretKey } = sessionParsed.tx;
+          return new Keypair({
+            publicKey: Uint8Array.from(publicKey),
+            secretKey: Uint8Array.from(secretKey),
+          });
+        }
+      }
+
+      console.log('No Keypair found in session.');
+      return null;
+    } catch (error) {
+      console.error('Error fetching session from database:', error);
+      return null;
     }
-    return null;
   };
 
   next();
