@@ -139,6 +139,8 @@ const transactionMiddleware = (req, res, next) => {
         where: { sid: sessionId },
       });
 
+      console.log("session data", sessionData)
+
       if (sessionData && sessionData.data) {
         const sessionParsed = JSON.parse(sessionData.data);
         if (sessionParsed.tx) {
