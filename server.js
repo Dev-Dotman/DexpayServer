@@ -115,23 +115,21 @@ sessionStore.sync({ alter: true });
 
 // Transaction middleware
 const transactionMiddleware = (req, res, next) => {
-  if (!req.session.tx) {
-    req.session.tx = null;
-  }
-
+  // Save Keypair in session as Base64 encoded strings
   req.saveTransactionKeypair = (keypair) => {
     req.session.tx = {
-      publicKey: Array.from(keypair._keypair.publicKey),
-      secretKey: Array.from(keypair._keypair.secretKey),
+      publicKey: keypair._keypair.publicKey.toString("base64"),
+      secretKey: keypair._keypair.secretKey.toString("base64"),
     };
   };
 
+  // Retrieve the Keypair from session and convert back to Uint8Array
   req.getTransactionKeypair = () => {
     if (req.session.tx) {
       const { publicKey, secretKey } = req.session.tx;
       return new Keypair({
-        publicKey: Uint8Array.from(publicKey),
-        secretKey: Uint8Array.from(secretKey),
+        publicKey: Uint8Array.from(Buffer.from(publicKey, "base64")),
+        secretKey: Uint8Array.from(Buffer.from(secretKey, "base64")),
       });
     }
     return null;
@@ -1640,7 +1638,7 @@ app.post("/complete-escrow", async (req, res) => {
   try {
     const signer = req.getTransactionKeypair();
 
-    //console.log(signer);
+    console.log(signer);
 
     // Check for required fields
     if (!escrowAccount || !merchant) {
@@ -1651,7 +1649,7 @@ app.post("/complete-escrow", async (req, res) => {
 
     console.log("log234", signer);
 
-    if (!signer._keypair) {
+    if (!signer) {
       return res
         .status(400)
         .json({ error: "No valid transaction session", success: false });
@@ -1927,7 +1925,6 @@ app.post("/refund-escrow", async (req, res) => {
       .status(400)
       .json({ error: "No valid transaction session", success: false });
   }
-
 
   try {
     // Convert signer secretKey to Keypair
