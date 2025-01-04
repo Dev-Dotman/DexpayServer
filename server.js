@@ -1229,6 +1229,7 @@ app.post("/api/create-escrow", async (req, res) => {
     // }
 
     req.session.tx = escrowAccount;
+    console.log(req.session.tx)
 
     // Create a new payment request
     await PaymentRequest.create({
