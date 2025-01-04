@@ -123,12 +123,12 @@ const transactionMiddleware = (req, res, next) => {
   // Save Keypair in session as Base64 encoded strings
   req.saveTransactionKeypair = (keypair) => {
     console.log(keypair)
-    key = keypair
+    req.session.tx = keypair
   };
 
   // Retrieve the Keypair from session and convert back to Uint8Array
   req.getTransactionKeypair = () => {
-    const keypair = key
+    const keypair = req.session.tx
     console.log('key..', keypair)
     return keypair;
   };
