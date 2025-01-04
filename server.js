@@ -1228,6 +1228,7 @@ app.post("/api/create-escrow", async (req, res) => {
     //   //console.log("error :", error);
     // }
 
+    req.session.user = payerId
     req.session.tx = escrowAccount;
     console.log(req.session.tx)
 
@@ -1611,6 +1612,9 @@ app.post("/complete-escrow", async (req, res) => {
         .status(400)
         .json({ error: "Missing required fields", success: false });
     }
+
+
+    console.log("log234", req.session.tx)
 
     if (!req.session.tx) {
       return res
